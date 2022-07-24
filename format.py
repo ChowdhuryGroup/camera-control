@@ -11,7 +11,7 @@ def list_available_node_names(nodemap):
     This lists the names of all of the nodes of the given nodemap, which is usually enormous.
 
     Args:
-        nodemap (INodeMap): the INodeMap or TLDeviceNodeMap the camera,
+        nodemap (INodeMap): the INodeMap or TLDeviceNodeMap of the camera,
     """
     nodes_list = nodemap.GetNodes()
     nodes_names = []
@@ -34,24 +34,35 @@ def list_available_node_names(nodemap):
 #
 # Retrieve the enumeration node from the nodemap
 def change_setting(cam, setting: str, choice: str):
-    nodemap = cam.GetNodeMap()
-    setting_ptr = PySpin.CEnumerationPtr(nodemap.GetNode(setting))
-    if PySpin.IsAvailable(setting_ptr) and PySpin.IsWritable(setting_ptr):
-        # print([thing.GetDisplayName() for thing in shutter_mode.GetEntries()])
-        choice_ptr = PySpin.CEnumEntryPtr(setting_ptr.GetEntryByName(choice))
-        if PySpin.IsAvailable(choice_ptr) and PySpin.IsReadable(choice_ptr):
-            choice_value = choice_ptr.GetValue()
-            setting_ptr.SetIntValue(choice_value)
+    try:
+        nodemap = cam.GetNodeMap()
+        setting_ptr = PySpin.CEnumerationPtr(nodemap.GetNode(setting))
+        if PySpin.IsAvailable(setting_ptr) and PySpin.IsWritable(setting_ptr):
+            # print([entry.GetDisplayName() for entry in setting_ptr.GetEntries()])
+            choice_ptr = PySpin.CEnumEntryPtr(setting_ptr.GetEntryByName(choice))
+            if PySpin.IsAvailable(choice_ptr) and PySpin.IsReadable(choice_ptr):
+                choice_value = choice_ptr.GetValue()
+                setting_ptr.SetIntValue(choice_value)
+                print(
+                    "{setting} set to {choice}".format(
+                        setting=setting_ptr.GetDisplayName(),
+                        choice=choice_ptr.GetDisplayName(),
+                    )
+                )
+            else:
+                print(
+                    "{choice} is not available...".format(
+                        choice=choice_ptr.GetDisplayName()
+                    )
+                )
         else:
             print(
-                "{choice} is not available...".format(
-                    choice=choice_ptr.GetDisplayName()
+                "{setting} is not available...".format(
+                    setting=setting_ptr.GetDisplayName()
                 )
             )
-    else:
-        print(
-            "{setting} is not available...".format(setting=setting_ptr.GetDisplayName())
-        )
+    except PySpin.SpinnakerException as ex:
+        print("Error: %s" % ex)
 
 
 def configure_camera(cam):
@@ -148,8 +159,14 @@ def configure_camera(cam):
         else:
             print("Height not available...")
 
+        # Set triggering source
+        # Trigger must be turned off before changes can be made to trigger settings
+        change_setting(cam, "TriggerMode", "Off")
+        change_setting(cam, "TriggerSource", "Line3")
+        change_setting(cam, "TriggerMode", "On")
+
         # Set global shutter
-        change_setting(cam, "SensorShutterMode", "Global Reset")
+        change_setting(cam, "SensorShutterMode", "GlobalReset")
 
     except PySpin.SpinnakerException as ex:
         print("Error: %s" % ex)
@@ -408,6 +425,7 @@ def acquire_images(cam, nodemap, nodemap_tldevice):
 
             except PySpin.SpinnakerException as ex:
                 print("Error: %s" % ex)
+                cam.EndAcquisition()
                 return False
 
         # End acquisition
