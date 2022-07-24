@@ -22,17 +22,19 @@ def list_available_node_names(nodemap):
 
 
 # *** NOTES ***
-# Enumeration nodes are slightly more complicated to set than other
-# nodes. This is because setting an enumeration node requires working
-# with two nodes instead of the usual one.
 #
-# As such, there are a number of steps to setting an enumeration node:
-# retrieve the enumeration node from the nodemap, retrieve the desired
-# entry node from the enumeration node, retrieve the integer value from
-# the entry node, and set the new value of the enumeration node with
-# the integer value from the entry node.
+#  Setting the value of an enumeration node is slightly more complicated
+#  than other node types. Two nodes must be retrieved: first, the
+#  enumeration node is retrieved from the nodemap; and second, the entry
+#  node is retrieved from the enumeration node. The integer value of the
+#  entry node is then set as the new value of the enumeration node.
 #
-# Retrieve the enumeration node from the nodemap
+#  Notice that both the enumeration and the entry nodes are checked for
+#  availability and readability/writability. Enumeration nodes are
+#  generally readable and writable whereas their entry nodes are only
+#  ever readable.
+#
+# Retrieve the enumeration node from nodemap
 def change_setting(cam, setting: str, choice: str):
     try:
         nodemap = cam.GetNodeMap()
@@ -221,7 +223,7 @@ def print_device_info(nodemap):
     return result
 
 
-def acquire_images(cam, nodemap, nodemap_tldevice):
+def acquire_images(cam):
     """
     This function acquires and saves images from a device.
 
@@ -239,6 +241,8 @@ def acquire_images(cam, nodemap, nodemap_tldevice):
     try:
         result = True
 
+        nodemap_tldevice = cam.GetTLDeviceNodeMap()
+
         # Set acquisition mode to continuous
         #
         #  *** NOTES ***
@@ -248,51 +252,8 @@ def acquire_images(cam, nodemap, nodemap_tldevice):
         #  hang. This would happen because the example has been written to
         #  acquire 10 images while the camera would have been programmed to
         #  retrieve less than that.
-        #
-        #  Setting the value of an enumeration node is slightly more complicated
-        #  than other node types. Two nodes must be retrieved: first, the
-        #  enumeration node is retrieved from the nodemap; and second, the entry
-        #  node is retrieved from the enumeration node. The integer value of the
-        #  entry node is then set as the new value of the enumeration node.
-        #
-        #  Notice that both the enumeration and the entry nodes are checked for
-        #  availability and readability/writability. Enumeration nodes are
-        #  generally readable and writable whereas their entry nodes are only
-        #  ever readable.
-        #
-        #  Retrieve enumeration node from nodemap
 
-        # In order to access the node entries, they have to be casted to a pointer type (CEnumerationPtr here)
-        node_acquisition_mode = PySpin.CEnumerationPtr(
-            nodemap.GetNode("AcquisitionMode")
-        )
-        if not PySpin.IsAvailable(node_acquisition_mode) or not PySpin.IsWritable(
-            node_acquisition_mode
-        ):
-            print(
-                "Unable to set acquisition mode to continuous (enum retrieval). Aborting..."
-            )
-            return False
-
-        # Retrieve entry node from enumeration node
-        node_acquisition_mode_continuous = node_acquisition_mode.GetEntryByName(
-            "Continuous"
-        )
-        if not PySpin.IsAvailable(
-            node_acquisition_mode_continuous
-        ) or not PySpin.IsReadable(node_acquisition_mode_continuous):
-            print(
-                "Unable to set acquisition mode to continuous (entry retrieval). Aborting..."
-            )
-            return False
-
-        # Retrieve integer value from entry node
-        acquisition_mode_continuous = node_acquisition_mode_continuous.GetValue()
-
-        # Set integer value from entry node as new value of enumeration node
-        node_acquisition_mode.SetIntValue(acquisition_mode_continuous)
-
-        print("Acquisition mode set to continuous...")
+        change_setting(cam, "AcquisitionMode", "Continuous")
 
         #  Begin acquiring images
         #
@@ -475,7 +436,7 @@ def capture(cam_list):
 
         # Acquire images
         for i, cam in enumerate(cam_list):
-            result &= acquire_images(cam, nodemap, nodemap_tldevice)
+            result &= acquire_images(cam)
 
         # Deinitialize cameras
         for i, cam in enumerate(cam_list):
