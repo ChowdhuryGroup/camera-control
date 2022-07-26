@@ -202,6 +202,18 @@ def configure_camera(cam):
 
         change_gain(cam, 27.01)
 
+        # Set acquisition mode to single frame
+        #
+        #  *** NOTES ***
+        #  Because the example acquires and saves 10 images, setting acquisition
+        #  mode to continuous lets the example finish. If set to single frame
+        #  or multiframe (at a lower number of images), the example would just
+        #  hang. This would happen because the example has been written to
+        #  acquire 10 images while the camera would have been programmed to
+        #  retrieve less than that.
+
+        change_enum_setting(cam, "AcquisitionMode", "SingleFrame")
+
     except PySpin.SpinnakerException as ex:
         print("Error: %s" % ex)
         return False
@@ -273,20 +285,6 @@ def acquire_images(cam):
     try:
         result = True
 
-        nodemap_tldevice = cam.GetTLDeviceNodeMap()
-
-        # Set acquisition mode to continuous
-        #
-        #  *** NOTES ***
-        #  Because the example acquires and saves 10 images, setting acquisition
-        #  mode to continuous lets the example finish. If set to single frame
-        #  or multiframe (at a lower number of images), the example would just
-        #  hang. This would happen because the example has been written to
-        #  acquire 10 images while the camera would have been programmed to
-        #  retrieve less than that.
-
-        change_enum_setting(cam, "AcquisitionMode", "Continuous")
-
         #  Begin acquiring images
         #
         #  *** NOTES ***
@@ -296,9 +294,6 @@ def acquire_images(cam):
         #  continuous stream of images. Because the example calls for the
         #  retrieval of 10 images, continuous mode has been set.
         #
-        #  *** LATER ***
-        #  Image acquisition must be ended when no more images are needed.
-        cam.BeginAcquisition()
 
         print("Acquiring images...")
 
@@ -308,6 +303,7 @@ def acquire_images(cam):
         #  The device serial number is retrieved in order to keep cameras from
         #  overwriting one another. Grabbing image IDs could also accomplish
         #  this.
+        nodemap_tldevice = cam.GetTLDeviceNodeMap()
         device_serial_number = ""
         node_device_serial_number = PySpin.CStringPtr(
             nodemap_tldevice.GetNode("DeviceSerialNumber")
@@ -422,13 +418,6 @@ def acquire_images(cam):
                 cam.EndAcquisition()
                 return False
 
-        # End acquisition
-        #
-        #  *** NOTES ***
-        #  Ending acquisition appropriately helps ensure that devices clean up
-        #  properly and do not need to be power-cycled to maintain integrity.
-        cam.EndAcquisition()
-
     except PySpin.SpinnakerException as ex:
         print("Error: %s" % ex)
         return False
@@ -468,11 +457,18 @@ def capture(cam_list):
                 return False
 
         # Acquire images
+        # Image acquisition must be ended when no more images are needed.
+        for cam in cam_list:
+            cam.BeginAcquisition()
         for i, cam in enumerate(cam_list):
             result &= acquire_images(cam)
 
         # Deinitialize cameras
-        for i, cam in enumerate(cam_list):
+        # End acquisition
+        #  Ending acquisition appropriately helps ensure that devices clean up
+        #  properly and do not need to be power-cycled to maintain integrity.
+        for cam in cam_list:
+            cam.EndAcquisition()
             cam.DeInit()
 
     except PySpin.SpinnakerException as ex:
@@ -538,8 +534,6 @@ def main():
 
     for cam in cam_list:
         cam.Init()
-        # nodemap = cam.GetNodeMap()
-        # list_available_node_names(nodemap)
 
     # Run example on each camera
     result &= capture(cam_list)
