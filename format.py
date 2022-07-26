@@ -35,7 +35,7 @@ def list_available_node_names(nodemap):
 #  ever readable.
 #
 # Retrieve the enumeration node from nodemap
-def change_setting(cam, setting: str, choice: str):
+def change_enum_setting(cam, setting: str, choice: str):
     try:
         nodemap = cam.GetNodeMap()
         setting_ptr = PySpin.CEnumerationPtr(nodemap.GetNode(setting))
@@ -67,6 +67,37 @@ def change_setting(cam, setting: str, choice: str):
         print("Error: %s" % ex)
 
 
+def change_gain(cam, gain: float):
+    """
+    Set gain in dB
+    """
+    # Get camera nodemap
+    nodemap = cam.GetNodeMap()
+
+    # Turn off auto gain to allow setting manually
+    node_gain_auto = PySpin.CEnumerationPtr(nodemap.GetNode("GainAuto"))
+    if PySpin.IsAvailable(node_gain_auto) and PySpin.IsWritable(node_gain_auto):
+        entry_gain_auto_off = node_gain_auto.GetEntryByName("Off")
+        if PySpin.IsAvailable(entry_gain_auto_off) and PySpin.IsReadable(
+            entry_gain_auto_off
+        ):
+            gain_auto_off = entry_gain_auto_off.GetValue()
+            node_gain_auto.SetIntValue(gain_auto_off)
+
+            # Set gain
+            node_gain = PySpin.CFloatPtr(nodemap.GetNode("Gain"))
+            if PySpin.IsAvailable(node_gain) and PySpin.IsWritable(node_gain):
+                node_gain.SetValue(gain)
+                print("Set gain to {}".format(gain))
+
+            else:
+                print("\nUnable to set Gain (float retrieval). Aborting...\n")
+        else:
+            print("\nUnable to set Gain Auto (entry retrieval). Aborting...\n")
+    else:
+        print("\nUnable to set Exposure Auto (enumeration retrieval). Aborting...\n")
+
+
 def configure_camera(cam):
     """
     Configures a number of settings on the camera including offsets  X and Y, width,
@@ -92,7 +123,7 @@ def configure_camera(cam):
         result = True
 
         # Apply mono 16 pixel format
-        change_setting(cam, "PixelFormat", "Mono16")
+        change_enum_setting(cam, "PixelFormat", "Mono16")
 
         """
         # Apply minimum to offset X
@@ -153,7 +184,6 @@ def configure_camera(cam):
         # maximum should always be a multiple of its increment.
         node_height = PySpin.CIntegerPtr(nodemap.GetNode("Height"))
         if PySpin.IsAvailable(node_height) and PySpin.IsWritable(node_height):
-
             height_to_set = node_height.GetMax()
             node_height.SetValue(height_to_set)
             print("Height set to %i..." % node_height.GetValue())
@@ -163,12 +193,14 @@ def configure_camera(cam):
 
         # Set triggering source
         # Trigger must be turned off before changes can be made to trigger settings
-        change_setting(cam, "TriggerMode", "Off")
-        change_setting(cam, "TriggerSource", "Line3")
-        change_setting(cam, "TriggerMode", "On")
+        change_enum_setting(cam, "TriggerMode", "Off")
+        change_enum_setting(cam, "TriggerSource", "Line3")
+        change_enum_setting(cam, "TriggerMode", "On")
 
         # Set global shutter
-        change_setting(cam, "SensorShutterMode", "GlobalReset")
+        change_enum_setting(cam, "SensorShutterMode", "GlobalReset")
+
+        change_gain(cam, 27.01)
 
     except PySpin.SpinnakerException as ex:
         print("Error: %s" % ex)
@@ -253,7 +285,7 @@ def acquire_images(cam):
         #  acquire 10 images while the camera would have been programmed to
         #  retrieve less than that.
 
-        change_setting(cam, "AcquisitionMode", "Continuous")
+        change_enum_setting(cam, "AcquisitionMode", "Continuous")
 
         #  Begin acquiring images
         #
