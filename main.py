@@ -1,6 +1,7 @@
 import os
 import PySpin
 import sys
+import datetime
 from tkinter.filedialog import askdirectory  # For file select gui
 
 NUM_IMAGES = 1  # number of images to grab
@@ -388,12 +389,12 @@ def acquire_images(cam: PySpin.CameraPtr, directory: str):
 
                     # Create a unique filename
                     if device_serial_number:
-                        filename = "ImageFormatControl-%s-%d.png" % (
+                        filename = "RatKingReigns-%s-%d.png" % (
                             device_serial_number,
                             i,
                         )
                     else:  # if serial number is empty
-                        filename = "ImageFormatControl-%d.png" % i
+                        filename = "RatKingReigns-%d.png" % i
 
                     # Save image
                     #
@@ -458,7 +459,23 @@ def capture(cam_list: PySpin.CameraList):
 
         # Acquire images
         # Image acquisition must be ended when no more images are needed.
-        directory = askdirectory()
+        folder_date = datetime.datetime.now()
+        folder_name = (
+            folder_date.strftime("%Y")
+            + "-"
+            + folder_date.strftime("%m")
+            + "-"
+            + folder_date.strftime("%d")
+            + " "
+            + folder_date.strftime("%H")
+            + "-"
+            + folder_date.strftime("%M")
+            + "-"
+            + folder_date.strftime("%S")
+        )
+        directory = askdirectory() + "/" + folder_name
+        os.mkdir(directory)
+
         for cam in cam_list:
             cam.BeginAcquisition()
         for i, cam in enumerate(cam_list):
