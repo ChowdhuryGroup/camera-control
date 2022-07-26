@@ -311,7 +311,8 @@ def acquire_images(cam):
                 #  Once an image from the buffer is saved and/or no longer
                 #  needed, the image must be released in order to keep the
                 #  buffer from filling up.
-                image_result = cam.GetNextImage(10000)
+                timeout = 10000  # milliseconds
+                image_result = cam.GetNextImage(timeout)
 
                 #  Ensure image completion
                 #
