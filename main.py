@@ -1,11 +1,12 @@
 import os
 import PySpin
 import sys
+from tkinter.filedialog import askdirectory  # For file select gui
 
 NUM_IMAGES = 1  # number of images to grab
 
 
-def list_available_node_names(nodemap):
+def list_available_node_names(nodemap: PySpin.CNodeMapPtr):
     """
     Every camera has an INodeMap and a TLDeviceNodeMap associated with it.
     This lists the names of all of the nodes of the given nodemap, which is usually enormous.
@@ -35,7 +36,7 @@ def list_available_node_names(nodemap):
 #  ever readable.
 #
 # Retrieve the enumeration node from nodemap
-def change_enum_setting(cam, setting: str, choice: str):
+def change_enum_setting(cam: PySpin.CameraPtr, setting: str, choice: str):
     try:
         nodemap = cam.GetNodeMap()
         setting_ptr = PySpin.CEnumerationPtr(nodemap.GetNode(setting))
@@ -67,7 +68,7 @@ def change_enum_setting(cam, setting: str, choice: str):
         print("Error: %s" % ex)
 
 
-def change_gain(cam, gain: float):
+def change_gain(cam: PySpin.CameraPtr, gain: float):
     """
     Set gain in dB
     """
@@ -98,7 +99,7 @@ def change_gain(cam, gain: float):
         print("\nUnable to set Exposure Auto (enumeration retrieval). Aborting...\n")
 
 
-def configure_camera(cam):
+def configure_camera(cam: PySpin.CameraPtr):
     """
     Configures a number of settings on the camera including offsets  X and Y, width,
     height, and pixel format. These settings must be applied before BeginAcquisition()
@@ -221,7 +222,7 @@ def configure_camera(cam):
     return result
 
 
-def print_device_info(nodemap):
+def print_device_info(nodemap: PySpin.CNodeMapPtr):
     """
     This function prints the device information of the camera from the transport
     layer; please see NodeMapInfo example for more in-depth comments on printing
@@ -267,7 +268,7 @@ def print_device_info(nodemap):
     return result
 
 
-def acquire_images(cam):
+def acquire_images(cam: PySpin.CameraPtr, directory: str):
     """
     This function acquires and saves images from a device.
 
@@ -281,7 +282,6 @@ def acquire_images(cam):
     :rtype: bool
     """
 
-    print("*** IMAGE ACQUISITION ***\n")
     try:
         result = True
 
@@ -401,7 +401,7 @@ def acquire_images(cam):
                     #  The standard practice of the examples is to use device
                     #  serial numbers to keep images of one device from
                     #  overwriting those of another.
-                    image_result.Save(filename, PySpin.PNG)
+                    image_result.Save(directory + "/" + filename, PySpin.PNG)
                     print("Image saved at %s" % filename)
 
                     #  Release image
@@ -425,7 +425,7 @@ def acquire_images(cam):
     return result
 
 
-def capture(cam_list):
+def capture(cam_list: PySpin.CameraList):
     """
     This function acts as the body of the example; please see NodeMapInfo example
     for more in-depth comments on setting up cameras.
@@ -458,10 +458,11 @@ def capture(cam_list):
 
         # Acquire images
         # Image acquisition must be ended when no more images are needed.
+        directory = askdirectory()
         for cam in cam_list:
             cam.BeginAcquisition()
         for i, cam in enumerate(cam_list):
-            result &= acquire_images(cam)
+            result &= acquire_images(cam, directory)
 
         # Deinitialize cameras
         # End acquisition
@@ -529,11 +530,11 @@ def main():
         system.ReleaseInstance()
 
         print("Not enough cameras!")
-        input("Done! Press Enter to exit...")
         return False
 
     for cam in cam_list:
         cam.Init()
+        print(cam)
 
     # Run example on each camera
     result &= capture(cam_list)
@@ -555,7 +556,6 @@ def main():
     # Release system instance
     system.ReleaseInstance()
 
-    input("Done! Press Enter to exit...")
     return result
 
 
