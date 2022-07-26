@@ -2,7 +2,7 @@ import os
 import PySpin
 import sys
 
-NUM_IMAGES = 10  # number of images to grab
+NUM_IMAGES = 1  # number of images to grab
 
 
 def list_available_node_names(nodemap):
