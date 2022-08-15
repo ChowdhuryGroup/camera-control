@@ -97,10 +97,10 @@ def change_gain(cam: PySpin.CameraPtr, gain: float):
         else:
             print("\nUnable to set Gain Auto (entry retrieval). Aborting...\n")
     else:
-        print("\nUnable to set Exposure Auto (enumeration retrieval). Aborting...\n")
+        print("\nUnable to set Gain Auto (enumeration retrieval). Aborting...\n")
 
 
-def configure_camera(cam: PySpin.CameraPtr):
+def configure_camera(cam: PySpin.CameraPtr, gain: float):
     """
     Configures a number of settings on the camera including offsets  X and Y, width,
     height, and pixel format. These settings must be applied before BeginAcquisition()
@@ -114,12 +114,6 @@ def configure_camera(cam: PySpin.CameraPtr):
     :rtype: bool
     """
     nodemap = cam.GetNodeMap()
-    # Retrieve TL device nodemap and print device information
-    nodemap_tldevice = cam.GetTLDeviceNodeMap()
-    serial_number = PySpin.CStringPtr(
-        nodemap_tldevice.GetNode("DeviceSerialNumber")
-    ).GetValue()  # Returns a GCString, which is a wrapper to std::string
-    print("\n*** CONFIGURING CAMERA %s *** \n", serial_number)
 
     try:
         result = True
@@ -202,7 +196,7 @@ def configure_camera(cam: PySpin.CameraPtr):
         # Set global shutter
         change_enum_setting(cam, "SensorShutterMode", "GlobalReset")
 
-        change_gain(cam, 27.01)
+        change_gain(cam, gain)
 
         # Set acquisition mode to single frame
         #
@@ -440,12 +434,33 @@ def capture(cam_list: PySpin.CameraList):
     try:
         result = True
 
+        config_file = open("input.tsv", mode="r")
+        lines = config_file.readlines()
+        config_file.close()
+
         # Configure cameras
         for i, cam in enumerate(cam_list):
             # Retrieve TL device nodemap and print device information
             nodemap_tldevice = cam.GetTLDeviceNodeMap()
 
             result &= print_device_info(nodemap_tldevice)
+
+            serial_number = PySpin.CStringPtr(
+                nodemap_tldevice.GetNode("DeviceSerialNumber")
+            ).GetValue()  # Returns a GCString, which is a wrapper to std::string
+            print("\n*** CONFIGURING CAMERA %s *** \n", serial_number)
+
+            for i, line in enumerate(lines):
+                if line.split("\t")[0] == "DeviceSerialNumber":
+                    if line.split("\t")[1] == serial_number:
+                        if lines[i + 1].split("\t")[0] == "Gain":
+                            gain = lines[i + 1].split("\t")[1][:-1]
+                        else:
+                            raise ValueError("Gain should follow serial number")
+            try:
+                gain
+            except NameError:
+                print("Gain isn't defined for {}".format(serial_number))
 
             # Initialize camera
             cam.Init()
@@ -454,7 +469,7 @@ def capture(cam_list: PySpin.CameraList):
             nodemap = cam.GetNodeMap()
 
             # Configure custom image settings
-            if not configure_camera(cam):
+            if not configure_camera(cam, gain):
                 return False
 
         # Acquire images
