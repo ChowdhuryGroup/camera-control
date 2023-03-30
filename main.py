@@ -2,6 +2,7 @@ import os
 import PySpin
 import sys
 import datetime
+import time
 from tkinter.filedialog import askdirectory  # For file select gui
 
 NUM_IMAGES = 1  # number of images to grab
@@ -307,7 +308,7 @@ def acquire_images(cam: PySpin.CameraPtr, directory: str):
             node_device_serial_number
         ):
             device_serial_number = node_device_serial_number.GetValue()
-            print("Device serial number retrieved as %s..." % device_serial_number)
+            print(f"Device serial number retrieved as {device_serial_number}...")
 
         # Retrieve, convert, and save images
 
@@ -319,7 +320,9 @@ def acquire_images(cam: PySpin.CameraPtr, directory: str):
         # *** NOTES ***
         # By default, if no specific color processing algorithm is set, the image
         # processor will default to NEAREST_NEIGHBOR method.
-        processor.SetColorProcessing(PySpin.HQ_LINEAR)
+        processor.SetColorProcessing(PySpin.SPINNAKER_COLOR_PROCESSING_ALGORITHM_HQ_LINEAR)
+
+        
 
         for i in range(NUM_IMAGES):
             try:
@@ -396,8 +399,8 @@ def acquire_images(cam: PySpin.CameraPtr, directory: str):
                     #  The standard practice of the examples is to use device
                     #  serial numbers to keep images of one device from
                     #  overwriting those of another.
-                    image_result.Save(directory + "/" + filename, PySpin.PNG)
-                    print("Image saved at %s" % filename)
+                    image_result.Save(directory + "/" + filename, PySpin.SPINNAKER_IMAGE_FILE_FORMAT_PNG)
+                    print(f"Image saved at {filename}")
 
                     #  Release image
                     #
@@ -409,12 +412,12 @@ def acquire_images(cam: PySpin.CameraPtr, directory: str):
                     print("")
 
             except PySpin.SpinnakerException as ex:
-                print("Error: %s" % ex)
+                print(f"Error: {ex}")
                 cam.EndAcquisition()
                 return False
 
     except PySpin.SpinnakerException as ex:
-        print("Error: %s" % ex)
+        print(f"Error: {ex}")
         return False
 
     return result
@@ -448,7 +451,7 @@ def capture(cam_list: PySpin.CameraList):
             serial_number = PySpin.CStringPtr(
                 nodemap_tldevice.GetNode("DeviceSerialNumber")
             ).GetValue()  # Returns a GCString, which is a wrapper to std::string
-            print("\n*** CONFIGURING CAMERA %s *** \n", serial_number)
+            print(f"\n*** CONFIGURING CAMERA {serial_number} *** \n")
 
             for i, line in enumerate(lines):
                 if line.split("\t")[0] == "DeviceSerialNumber":
@@ -471,7 +474,9 @@ def capture(cam_list: PySpin.CameraList):
             # Configure custom image settings
             if not configure_camera(cam, float(gain)):
                 return False
-
+        
+        time.sleep(1.0)
+        
         # Acquire images
         # Image acquisition must be ended when no more images are needed.
         folder_date = datetime.datetime.now()
@@ -493,6 +498,13 @@ def capture(cam_list: PySpin.CameraList):
 
         for cam in cam_list:
             cam.BeginAcquisition()
+        
+        time.sleep(1.0)
+
+        for cam in cam_list:
+            if not cam.IsStreaming():
+                raise PySpin.SpinnakerException("Camera is not streaming")
+
         for i, cam in enumerate(cam_list):
             result &= acquire_images(cam, directory)
 
