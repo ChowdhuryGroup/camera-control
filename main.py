@@ -452,7 +452,7 @@ def capture(cam_list: PySpin.CameraList):
 
             for i, line in enumerate(lines):
                 if line.split("\t")[0] == "DeviceSerialNumber":
-                    if line.split("\t")[1] == serial_number:
+                    if line.split("\t")[1][:-1] == serial_number:
                         if lines[i + 1].split("\t")[0] == "Gain":
                             gain = lines[i + 1].split("\t")[1][:-1]
                         else:
@@ -460,7 +460,7 @@ def capture(cam_list: PySpin.CameraList):
             try:
                 gain
             except NameError:
-                print("Gain isn't defined for {}".format(serial_number))
+                print("Gain isn't specified for {}".format(serial_number))
 
             # Initialize camera
             cam.Init()
