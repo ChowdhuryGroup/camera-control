@@ -469,7 +469,7 @@ def capture(cam_list: PySpin.CameraList):
             nodemap = cam.GetNodeMap()
 
             # Configure custom image settings
-            if not configure_camera(cam, gain):
+            if not configure_camera(cam, float(gain)):
                 return False
 
         # Acquire images
